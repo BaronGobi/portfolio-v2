@@ -4,6 +4,8 @@ Personal portfolio of Baron Gobi (Rons), a full-stack web developer based in Tok
 
 A dark, editorial site with a 3D hero, scroll-driven motion, case-study pages and a full resume page.
 
+**Live site:** https://portfolio-v2-nine-omega-31.vercel.app
+
 ![The home page hero: a glass and orange 3D scene above the name Baron Gobi](docs/preview.jpg)
 
 ## Features
