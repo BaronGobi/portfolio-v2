@@ -83,7 +83,9 @@ export function Header() {
 
     document.addEventListener("keydown", onKeyDown);
     outside.forEach((element) => element.setAttribute("inert", ""));
-    menuPanel.current?.querySelector<HTMLElement>("a")?.focus();
+    // `preventScroll` matters: the links start outside their masks, and a
+    // normal focus() would scroll the first one into view, skipping its entrance.
+    menuPanel.current?.querySelector<HTMLElement>("a")?.focus({ preventScroll: true });
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
@@ -244,7 +246,7 @@ export function Header() {
                     hash: null,
                   },
                 ].map((item) => (
-                  <li key={item.key} className="overflow-hidden border-b border-line">
+                  <li key={item.key} className="overflow-clip border-b border-line">
                     <m.div
                       variants={{
                         hidden: { y: "105%" },

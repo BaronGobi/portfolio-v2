@@ -75,7 +75,7 @@ Every full-width section also carries `data-band`. The header and the back-to-to
 
 `HeroScene.tsx` (three.js) is loaded with `next/dynamic` and `ssr: false`, once the page has loaded and the browser is idle. `HeroFallback.tsx` is a CSS drawing of the same artwork, sent by the server; it shows first and remains when 3D is skipped.
 
-The live scene is skipped for reduced motion, data-saver mode, small low-power phones, and when WebGL 2 is missing or software-rendered. A frame-rate guard inside the scene lowers the pixel density if it runs slowly, then hands back to the fallback if that is not enough. Add `?3d=force` to the URL to bypass the device checks while debugging.
+The live scene is skipped for reduced motion, data-saver mode, devices that report 2 GB of memory or less, and when WebGL 2 is missing or software-rendered. Phone-sized screens get a lighter version (`lite`: lower pixel density, no dispersion, less geometry). A frame-rate guard inside the scene lowers the pixel density if it runs below 24 fps, then hands back to the fallback if that is not enough. Add `?3d=force` to the URL to bypass the device checks while debugging.
 
 ### framer-motion: use `m`, not `motion`
 

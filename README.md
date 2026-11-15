@@ -113,7 +113,7 @@ The test machine has no GPU, so these runs show the static hero artwork. The liv
 
 - Text contrast is at least 4.5:1 in both themes.
 - Visitors who prefer reduced motion get no smooth scrolling, parallax or 3D scene, and content appears in its final state.
-- The 3D scene is skipped on data-saver connections, small low-power phones and browsers without hardware-accelerated WebGL 2. A CSS version of the artwork is shown instead.
+- Phones get a lighter version of the 3D scene. It is skipped on data-saver connections, on devices that report very little memory and in browsers without hardware-accelerated WebGL 2, and it steps aside if it cannot hold a smooth frame rate. A CSS version of the artwork is shown instead.
 
 ## Credits
 

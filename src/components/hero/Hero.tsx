@@ -13,7 +13,7 @@ import {
 import { ArrowDown, ArrowUpRight } from "lucide-react";
 import { SectionLink } from "@/components/ui/SectionLink";
 import { profile } from "@/content/profile";
-import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useMediaQuery, usePrefersReducedMotion } from "@/lib/hooks";
 import { duration } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { HeroFallback } from "./HeroFallback";
@@ -27,11 +27,14 @@ let webglSupport: boolean | null = null;
 /**
  * Should this device get the live 3D scene?
  *
- * No for data-saver mode, for small low-power phones, and when WebGL 2 is
- * missing or software-rendered (virtual machines, remote desktops, blocked
- * GPU drivers), where the scene would run at a few frames per second.
- * A device that passes but still renders slowly is caught later by the
- * frame-rate guard inside the scene.
+ * No for data-saver mode, for devices that report very little memory, and when
+ * WebGL 2 is missing or software-rendered (virtual machines, remote desktops,
+ * blocked GPU drivers), where the scene would run at a few frames per second.
+ *
+ * Phones are not excluded up front: they get a lighter version of the scene
+ * (see `lite` in `HeroScene.tsx`). Any device that still renders it slowly is
+ * caught by the frame-rate guard inside the scene and falls back to the
+ * static artwork.
  *
  * Add `?3d=force` to the URL to skip these checks while debugging.
  */
@@ -48,10 +51,10 @@ function canRender3D(): boolean {
       connection?: { saveData?: boolean };
       deviceMemory?: number;
     };
-    const smallScreen = Math.min(window.innerWidth, window.innerHeight) < 600;
-    const lowPower = (nav.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) <= 2;
+    // `deviceMemory` is only reported by Chromium browsers, in GB.
+    const veryLowMemory = (nav.deviceMemory ?? 8) <= 2;
 
-    if (nav.connection?.saveData || (smallScreen && lowPower)) {
+    if (nav.connection?.saveData || veryLowMemory) {
       webglSupport = false;
     } else {
       // `failIfMajorPerformanceCaveat` makes the browser refuse a context it
@@ -137,6 +140,8 @@ export function Hero() {
   const track = useRef<HTMLDivElement>(null);
   const pageIdle = usePageIdle();
   const reduced = usePrefersReducedMotion();
+  // Phone-sized screens get the lighter version of the scene.
+  const smallScreen = useMediaQuery("(max-width: 599px), (max-height: 599px)");
 
   const [covered, setCovered] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
@@ -190,6 +195,7 @@ export function Hero() {
               >
                 <HeroScene
                   progress={scrollYProgress}
+                  lite={smallScreen}
                   active={!covered}
                   onReady={() => setSceneReady(true)}
                   onGiveUp={() => setSceneTooSlow(true)}

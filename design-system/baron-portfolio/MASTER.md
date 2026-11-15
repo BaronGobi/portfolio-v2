@@ -148,7 +148,8 @@ An original scene: an orange core inside three glass gimbal rings, with small gl
 
 - Leans toward the cursor; drifts apart as the page scrolls.
 - Loaded lazily in the browser, once the page has loaded and is idle. The server sends a CSS drawing of the same artwork, which shows first and stays as the fallback.
-- Skipped for: reduced motion, data-saver mode, small low-power phones, missing or software-rendered WebGL 2.
+- Phone-sized screens get a lighter version: lower pixel density, no rainbow fringe on the glass, less geometry.
+- Skipped for: reduced motion, data-saver mode, devices reporting very little memory, missing or software-rendered WebGL 2.
 - Watches its own frame rate: first lowers pixel density, then gives way to the CSS artwork if it is still slow.
 - Stops rendering once the hero is scrolled out of view.
 

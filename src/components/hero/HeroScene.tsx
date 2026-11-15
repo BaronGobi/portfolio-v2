@@ -167,6 +167,11 @@ export type HeroSceneProps = {
   onReady: () => void;
   /** Called if the device cannot keep a usable frame rate, even at low quality. */
   onGiveUp: () => void;
+  /**
+   * Lighter rendering for phone-sized screens: fewer pixels, simpler glass
+   * and less geometry. The scene looks the same at that size.
+   */
+  lite?: boolean;
 };
 
 export default function HeroScene({
@@ -174,8 +179,9 @@ export default function HeroScene({
   active,
   onReady,
   onGiveUp,
+  lite = false,
 }: HeroSceneProps) {
-  const [maxDpr, setMaxDpr] = useState(1.5);
+  const [maxDpr, setMaxDpr] = useState(lite ? 1.25 : 1.5);
   const slowSamples = useRef(0);
 
   // Start sharp. On a slow sample, first render fewer pixels. If it is slow
@@ -197,7 +203,7 @@ export default function HeroScene({
       <color attach="background" args={[BACKGROUND]} />
       <FrameRateGuard active={active} onSlow={handleSlow} />
       <StudioLights />
-      <Cluster progress={progress} onReady={onReady} />
+      <Cluster progress={progress} onReady={onReady} lite={lite} />
     </Canvas>
   );
 }
@@ -206,10 +212,13 @@ export default function HeroScene({
 const WARMUP_MS = 1200;
 /** Length of one frame-rate sample, in ms. */
 const SAMPLE_MS = 1500;
-/** Below this the scene is reported as slow. */
-const SLOW_FPS = 30;
+/**
+ * Below this the scene is reported as slow. Kept under 30 on purpose: phones
+ * in battery-saver mode cap animation at 30 fps, and that is still fine.
+ */
+const SLOW_FPS = 24;
 /** Below this there is no point trying a lower quality first. */
-const HOPELESS_FPS = 14;
+const HOPELESS_FPS = 12;
 
 type FrameRateGuardProps = {
   active: boolean;
@@ -309,9 +318,9 @@ function StudioLights() {
   );
 }
 
-type ClusterProps = Pick<HeroSceneProps, "progress" | "onReady">;
+type ClusterProps = Pick<HeroSceneProps, "progress" | "onReady"> & { lite: boolean };
 
-function Cluster({ progress, onReady }: ClusterProps) {
+function Cluster({ progress, onReady, lite }: ClusterProps) {
   const cluster = useRef<THREE.Group>(null);
   const core = useRef<THREE.Mesh>(null);
   const dust = useRef<THREE.Points>(null);
@@ -341,14 +350,15 @@ function Cluster({ progress, onReady }: ClusterProps) {
         thickness: 0.9,
         roughness: 0.04,
         ior: 1.48,
-        dispersion: 6,
+        // Dispersion (the rainbow fringe) triples the refraction work.
+        dispersion: lite ? 0 : 6,
         attenuationColor: "#ffc9a6",
         attenuationDistance: 3,
         clearcoat: 1,
         clearcoatRoughness: 0.08,
         envMapIntensity: 1.35,
       }),
-    [],
+    [lite],
   );
 
   const coreMaterial = useMemo(
@@ -362,7 +372,11 @@ function Cluster({ progress, onReady }: ClusterProps) {
   );
 
   const haloTexture = useMemo(() => createHaloTexture(), []);
-  const dustPositions = useMemo(() => createDustPositions(320), []);
+  const dustPositions = useMemo(() => createDustPositions(lite ? 140 : 320), [lite]);
+
+  // Smoothness of the curved shapes: [around the tube, around the ring].
+  const ringDetail: [number, number] = lite ? [24, 96] : [40, 160];
+  const sphereDetail = lite ? 28 : 44;
 
   useEffect(() => {
     return () => {
@@ -445,7 +459,7 @@ function Cluster({ progress, onReady }: ClusterProps) {
     <group ref={cluster}>
       {/* Core and its glow. */}
       <mesh ref={core} material={coreMaterial}>
-        <sphereGeometry args={[0.56, 48, 48]} />
+        <sphereGeometry args={[0.56, sphereDetail, sphereDetail]} />
       </mesh>
       <sprite scale={[6.4, 6.4, 1]}>
         <spriteMaterial
@@ -466,7 +480,7 @@ function Cluster({ progress, onReady }: ClusterProps) {
             }}
             material={glass}
           >
-            <torusGeometry args={[ring.radius, ring.tube, 40, 160]} />
+            <torusGeometry args={[ring.radius, ring.tube, ...ringDetail]} />
           </mesh>
         </group>
       ))}
@@ -487,7 +501,7 @@ function Cluster({ progress, onReady }: ClusterProps) {
               <capsuleGeometry args={[satellite.size, satellite.size * 2.2, 12, 28]} />
             )}
             {(satellite.kind === "sphere" || satellite.kind === "dot") && (
-              <sphereGeometry args={[satellite.size, 40, 40]} />
+              <sphereGeometry args={[satellite.size, sphereDetail, sphereDetail]} />
             )}
           </mesh>
         </group>
