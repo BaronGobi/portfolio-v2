@@ -1,0 +1,43 @@
+{
+  "name": "baron-gobi-portfolio",
+  "version": "1.0.0",
+  "description": "Portfolio of Baron Gobi, full-stack web developer.",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "framer-motion": "^14.14.0",
+    "lenis": "^1.3.27",
+    "lucide-react": "^1.73.0",
+    "next": "16.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "simple-icons": "^16.37.0",
+    "three": "0.182.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "0.182.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "prettier": "^3.10.1",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "^5"
+  }
+}

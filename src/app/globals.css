@@ -1,0 +1,352 @@
+@import "tailwindcss";
+
+/* `dark:` follows the data-theme attribute instead of the OS setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* -------------------------------------------------------------------------
+   Design tokens
+   See design-system/baron-portfolio/MASTER.md for the reasoning.
+
+   Components never use raw colors. They use the semantic tokens below
+   (bg, fg, muted, line, accent). A "tone" class on an element decides which
+   palette those tokens resolve to inside it:
+
+     (none)        follows the active theme
+     .tone-invert  the opposite of the active theme
+     .tone-dark    always dark
+     .tone-accent  solid orange
+
+   Add `.band` to paint the element with its tone's background and text color.
+   ------------------------------------------------------------------------- */
+
+/* Dark palette: the default theme, plus bands that are always dark. */
+:root,
+[data-theme="dark"],
+[data-theme="light"] .tone-invert,
+.tone-dark {
+  --bg: #0a0a0a;
+  --bg-raised: #151514;
+  --fg: #f4efe9;
+  --fg-muted: #a8a39b;
+  --line: rgb(244 239 233 / 0.16);
+  --accent: #ff5f1f;
+  --accent-solid: #ff5f1f;
+  --on-accent: #0a0a0a;
+  color-scheme: dark;
+}
+
+/* Light palette: the light theme, plus inverted bands inside the dark theme. */
+[data-theme="light"],
+[data-theme="dark"] .tone-invert {
+  --bg: #f4efe9;
+  --bg-raised: #e9e3da;
+  --fg: #0c0c0b;
+  --fg-muted: #57534c;
+  --line: rgb(12 12 11 / 0.16);
+  /* Orange is darkened on light surfaces so accent text passes 4.5:1. */
+  --accent: #b03a0a;
+  --accent-solid: #ff5f1f;
+  --on-accent: #0a0a0a;
+  color-scheme: light;
+}
+
+/* Accent tone: solid orange with near-black text. */
+.tone-accent {
+  --bg: #ff5f1f;
+  --bg-raised: #ff7a45;
+  --fg: #0a0a0a;
+  --fg-muted: rgb(10 10 10 / 0.8);
+  --line: rgb(10 10 10 / 0.24);
+  --accent: #0a0a0a;
+  --accent-solid: #0a0a0a;
+  --on-accent: #f4efe9;
+  color-scheme: light;
+}
+
+.band {
+  background-color: var(--bg);
+  color: var(--fg);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-solid: var(--accent-solid);
+  --color-on-accent: var(--on-accent);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-smooth: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --breakpoint-3xl: 112rem;
+}
+
+/* -------------------------------------------------------------------------
+   Type scale: fluid sizes, tight tracking on display sizes.
+   ------------------------------------------------------------------------- */
+
+@utility text-display {
+  font-size: clamp(4.5rem, 13.4vw, 17rem);
+  line-height: 0.84;
+  letter-spacing: -0.055em;
+  font-weight: 500;
+}
+
+@utility text-h1 {
+  font-size: clamp(2.75rem, 7.6vw, 8.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  font-weight: 500;
+}
+
+@utility text-h2 {
+  font-size: clamp(2.25rem, 5.4vw, 5.75rem);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+}
+
+@utility text-h3 {
+  font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+
+@utility text-lead {
+  font-size: clamp(1.25rem, 1.85vw, 1.875rem);
+  line-height: 1.32;
+  letter-spacing: -0.02em;
+}
+
+@utility text-body {
+  font-size: clamp(1rem, 1.05vw, 1.125rem);
+  line-height: 1.6;
+}
+
+/* Small uppercase mono label used above headings and in meta rows. */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Page gutter and maximum width. */
+@utility shell {
+  width: 100%;
+  max-width: 112rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+
+  @media (width >= 40rem) {
+    padding-inline: 2rem;
+  }
+
+  @media (width >= 64rem) {
+    padding-inline: 3rem;
+  }
+}
+
+/* Vertical rhythm for full sections. */
+@utility section-y {
+  padding-block: clamp(5rem, 11vw, 11rem);
+}
+
+/* -------------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    background-color: var(--bg);
+    color: var(--fg);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background-color: var(--accent-solid);
+    color: var(--on-accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  a,
+  button,
+  summary,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* Animated underline for inline links. */
+@utility link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  transition: background-size 0.45s var(--ease-out-expo);
+
+  @media (hover: hover) {
+    &:hover {
+      background-position: 100% 100%;
+      background-size: 0% 1px;
+    }
+  }
+}
+
+/* One word of a `ScrollWords` paragraph. `--progress` (0 to 1) is set on the
+   paragraph by JavaScript; each word brightens when the progress reaches its
+   position. The 60% floor keeps unlit words above 4.5:1 contrast. */
+@utility scroll-word {
+  opacity: calc(
+    0.6 + 0.4 * clamp(0, var(--progress, 1) * var(--count, 1) - var(--i, 0), 1)
+  );
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 1;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Hero entrance
+   The name is the largest element on the page, so it animates with CSS that
+   starts at first paint instead of waiting for JavaScript.
+   ------------------------------------------------------------------------- */
+
+@keyframes hero-rise {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility hero-rise {
+  animation: hero-rise 1.1s var(--ease-out-expo) both;
+  animation-delay: var(--hero-delay, 0ms);
+}
+
+@utility hero-fade {
+  animation: hero-fade 0.9s var(--ease-out-expo) both;
+  animation-delay: var(--hero-delay, 0ms);
+}
+
+@keyframes scroll-cue {
+  0% {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  45% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  55% {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+@utility scroll-cue {
+  animation: scroll-cue 2.4s var(--ease-in-out-smooth) infinite;
+}
+
+/* -------------------------------------------------------------------------
+   Reduced motion: show everything in its final state.
+   ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Print: the resume page prints as a clean black-on-white document.
+   ------------------------------------------------------------------------- */
+
+@media print {
+  :root,
+  [data-theme],
+  [data-theme] .tone-dark,
+  [data-theme] .tone-invert,
+  [data-theme] .tone-accent {
+    --bg: #ffffff !important;
+    --bg-raised: #ffffff !important;
+    --fg: #000000 !important;
+    --fg-muted: #333333 !important;
+    --line: rgb(0 0 0 / 0.25) !important;
+    --accent: #000000 !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  body {
+    font-size: 11pt;
+  }
+
+  a {
+    text-decoration: none;
+  }
+
+  li,
+  article {
+    break-inside: avoid;
+  }
+}
