@@ -11,6 +11,7 @@ A dark, editorial site with a 3D hero, scroll-driven motion, case-study pages an
 ## Features
 
 - **3D hero** built with three.js: an orange core in glass gimbal rings that leans toward the cursor and drifts apart as you scroll. It loads after the page is usable and falls back to a CSS drawing on slow devices.
+- **Liquid portrait** in the About section: a full-size photo under an oversized wordmark that smears like a liquid behind the cursor, or under a finger on phones. Written in plain WebGL, with no extra library.
 - **Scroll-driven motion** with Framer Motion: masked text reveals, a quote that lights up word by word, counters, parallax, a velocity-aware ticker and a cursor-following project preview.
 - **Dark and light themes** that follow the system setting, with a toggle that remembers the choice and no flash on load.
 - **Case-study pages** generated from a single content file, plus a printable resume page.
@@ -112,7 +113,7 @@ The test machine has no GPU, so these runs show the static hero artwork. The liv
 ## Accessibility and motion
 
 - Text contrast is at least 4.5:1 in both themes.
-- Visitors who prefer reduced motion get no smooth scrolling, parallax or 3D scene, and content appears in its final state.
+- Visitors who prefer reduced motion get no smooth scrolling, parallax, 3D scene or liquid photo effect, and content appears in its final state.
 - Phones get a lighter version of the 3D scene. It is skipped on data-saver connections, on devices that report very little memory and in browsers without hardware-accelerated WebGL 2, and it steps aside if it cannot hold a smooth frame rate. A CSS version of the artwork is shown instead.
 
 ## Credits

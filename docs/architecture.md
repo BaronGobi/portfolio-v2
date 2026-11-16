@@ -57,13 +57,13 @@ There is no database, API or server-side data fetching. Content is imported from
 
 ### Server components by default
 
-Pages and sections are server components. Only the pieces that need the browser are client components (`"use client"`): the motion building blocks, the header, the hero and the accordion. Server-rendered content is passed into them as `children`, so the text stays in the HTML.
+Pages and sections are server components. Only the pieces that need the browser are client components (`"use client"`): the motion building blocks, the header, the hero, the About portrait panel and the accordion. Server-rendered content is passed into them as `children`, so the text stays in the HTML.
 
 ### Tones and bands
 
 Colors are semantic tokens (`bg`, `fg`, `muted`, `line`, `accent`). A tone class (`tone-dark`, `tone-invert`, `tone-accent`) re-points those tokens for everything inside it, so a component looks right on any background without knowing which one it is on.
 
-Every full-width section also carries `data-band`. The header and the back-to-top button call `bandAt(y)` from `src/lib/band.ts` to find the section behind them, and take its tone.
+Every full-width section also carries `data-band`. The header and the back-to-top button call `bandAt(y)` from `src/lib/band.ts` to find the section behind them, and take its tone. A band can sit inside another one: the About portrait panel is a dark band inside the About section, which is why the header turns light while the photo is behind it, even in the light theme.
 
 ### Theme
 
@@ -76,6 +76,17 @@ Every full-width section also carries `data-band`. The header and the back-to-to
 `HeroScene.tsx` (three.js) is loaded with `next/dynamic` and `ssr: false`, once the page has loaded and the browser is idle. `HeroFallback.tsx` is a CSS drawing of the same artwork, sent by the server; it shows first and remains when 3D is skipped.
 
 The live scene is skipped for reduced motion, data-saver mode, devices that report 2 GB of memory or less, and when WebGL 2 is missing or software-rendered. Phone-sized screens get a lighter version (`lite`: lower pixel density, no dispersion, less geometry). A frame-rate guard inside the scene lowers the pixel density if it runs below 24 fps, then hands back to the fallback if that is not enough. Add `?3d=force` to the URL to bypass the device checks while debugging.
+
+### The liquid portrait
+
+`AboutPortrait.tsx` is the photo panel in the About section. The photo itself is `LiquidImage` (`src/components/motion`): an ordinary `next/image`, with a WebGL canvas on top that is only visible while the surface is moving.
+
+`liquid.ts` holds the WebGL code. It is plain WebGL 1 with no library, so it works on every phone and adds under 4 kB (compressed), loaded on demand shortly before the photo scrolls into view. A small texture stores how fast the surface is moving at each point; the pointer writes its velocity into it, and each frame the flow carries itself along, blurs slightly and fades. A second pass draws the photo displaced by that flow. The loop stops about two seconds after the last input, and the canvas hides again.
+
+- Mouse: movement over the panel stirs the photo. Text laid over the photo counts too, because the panel carries `data-liquid-area`.
+- Touch: the photo follows the finger and ripples on a tap. Touch events are used instead of pointer events, because browsers cancel pointer events once a touch starts scrolling. Since there is no hover on a phone, one gentle stroke plays by itself the first time the photo is on screen.
+- Reduced motion, or no WebGL: the plain image stays and nothing else loads.
+- The flow uses half-float textures where the device can draw into them and 8-bit textures otherwise. If the first frames are slow, the canvas resolution is halved once.
 
 ### framer-motion: use `m`, not `motion`
 

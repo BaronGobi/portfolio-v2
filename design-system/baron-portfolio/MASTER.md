@@ -125,7 +125,7 @@ Rules:
 1. **Motion has to mean something.** Reveals mark new content; scroll-linked effects show progress. At most one or two moving things per screen.
 2. **Animate only `transform` and `opacity`.** The one exception is accordion height, because content below has to make room.
 3. **Exits are faster than entrances.**
-4. **Reduced motion is honored everywhere.** With `prefers-reduced-motion: reduce`: no smooth scrolling, no parallax, no 3D scene, no marquee; reveals become simple fades and content is shown in its final state.
+4. **Reduced motion is honored everywhere.** With `prefers-reduced-motion: reduce`: no smooth scrolling, no parallax, no 3D scene, no liquid portrait, no marquee; reveals become simple fades and content is shown in its final state.
 5. **Nothing depends on hover.** Every hover effect has a focus or always-visible equivalent (the work preview becomes inline images on touch screens).
 6. **Moving content can be paused.** The stack marquee has a pause button and stops off screen.
 7. **The largest element paints first.** The hero name and inner-page titles use CSS animations that start at first paint, so they don't wait for JavaScript.
@@ -139,6 +139,7 @@ Rules:
 | `ScrollWords`                         | Words brighten as you scroll through a paragraph. Unlit words stay at 60% opacity, so they still pass contrast |
 | `Counter`                             | Number counts up when it enters view                                                                           |
 | `Parallax`                            | Image drifts inside its frame                                                                                  |
+| `LiquidImage`                         | Photo that smears behind the pointer or finger like a liquid, then settles. Used for the About portrait        |
 | `Marquee`                             | Endless ticker that speeds up with scroll                                                                      |
 | `Magnetic`                            | Element leans toward the cursor                                                                                |
 

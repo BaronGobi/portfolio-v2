@@ -8,20 +8,37 @@ After editing, run `npm run dev` and check the page.
 
 ## Where things are
 
-| I want to change...               | Edit                                                                 |
-| --------------------------------- | -------------------------------------------------------------------- |
-| Name, role, location, tagline     | `profile.ts` → `profile`                                             |
-| The About text                    | `profile.ts` → `intro`, `introDetail`, `about`                       |
-| Email, LinkedIn, GitHub links     | `profile.ts` → `socials`                                             |
-| The portrait                      | Replace `public/images/profile/rons.webp`, update `profile.portrait` |
-| The resume PDF                    | Replace `public/Baron-Resume.pdf`                                    |
-| Projects                          | `projects.ts`                                                        |
-| Jobs, organizations, education    | `experience.ts`                                                      |
-| Skills and the logo ticker        | `skills.ts`                                                          |
-| The four big numbers              | `highlights.ts` → `stats`                                            |
-| Awards and certification          | `highlights.ts` → `recognition`                                      |
-| Testimonials                      | `highlights.ts` → `testimonials`                                     |
-| Page title, meta description, nav | `site.ts`                                                            |
+| I want to change...               | Edit                                                               |
+| --------------------------------- | ------------------------------------------------------------------ |
+| Name, role, location, tagline     | `profile.ts` → `profile`                                           |
+| The About text                    | `profile.ts` → `intro`, `introDetail`, `about` (label + paragraph) |
+| Email, LinkedIn, GitHub links     | `profile.ts` → `socials`                                           |
+| The portrait and the text on it   | `profile.ts` → `portrait` (see "The portrait panel" below)         |
+| The resume PDF                    | Replace `public/Baron-Resume.pdf`                                  |
+| Projects                          | `projects.ts`                                                      |
+| Jobs, organizations, education    | `experience.ts`                                                    |
+| Skills and the logo ticker        | `skills.ts`                                                        |
+| The four big numbers              | `highlights.ts` → `stats`                                          |
+| Awards and certification          | `highlights.ts` → `recognition`                                    |
+| Testimonials                      | `highlights.ts` → `testimonials`                                   |
+| Page title, meta description, nav | `site.ts`                                                          |
+
+## The portrait panel
+
+The large photo in the About section is described by `profile.portrait`:
+
+| Field                    | What it does                                                                                                                      |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `src`, `width`, `height` | The photo. A square image of about 2400px keeps it sharp when it fills a large screen                                             |
+| `alt`                    | Description for screen readers                                                                                                    |
+| `focus`                  | The point that stays in view when the photo is cropped: `[x, y]`, each from 0 (left / top) to 1 (right / bottom). Aim at the face |
+| `wordmark`               | The big word across the bottom. Its size is tuned for five letters                                                                |
+| `lead`, `trail`          | The sentence in the top corner. `trail` is the dimmed ending                                                                      |
+| `focusAreas`             | The short "01/" list. Three or four entries fit                                                                                   |
+
+To swap the photo, replace `public/images/profile/rons.webp` (or add a new file and change `src`), then set `width`, `height` and `focus`. The panel crops the photo differently on phones (tall) and desktops (wide), so check both after changing `focus`.
+
+If you change `wordmark` to a longer or shorter word, adjust its font size in `src/components/sections/AboutPortrait.tsx` (the `text-[28cqw]` and `md:text-[19.5cqw]` classes) so it still fits the panel.
 
 ## Add a project
 

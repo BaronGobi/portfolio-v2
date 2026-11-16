@@ -1,12 +1,13 @@
-import Image from "next/image";
-import { Parallax } from "@/components/motion/Parallax";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { ArrowLink } from "@/components/ui/ArrowLink";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { profile } from "@/content/profile";
+import { AboutPortrait } from "./AboutPortrait";
 
-/** (01) About: intro statement, portrait and the longer story. */
+/**
+ * (01) About: an opening statement, the portrait panel, then the longer story
+ * as labelled rows.
+ */
 export function About() {
   return (
     <section
@@ -26,54 +27,39 @@ export function About() {
           About {profile.nickname}
         </h2>
 
+        {/* The first line is indented; the reset keeps each animated word
+            (an inline block of its own) from inheriting the indent. */}
         <TextReveal
           as="p"
           text={profile.intro}
           gap={0.022}
-          className="mt-10 max-w-[26ch] text-[clamp(1.75rem,4.1vw,4.25rem)] leading-[1.04] font-medium tracking-[-0.04em] md:mt-16"
+          className="mt-10 indent-[14%] text-[clamp(1.75rem,4.55vw,5rem)] leading-[1.03] font-medium tracking-[-0.04em] md:mt-16 md:indent-[32%] [&_span]:indent-0"
         />
 
-        <div className="mt-16 grid gap-x-8 gap-y-12 md:mt-24 md:grid-cols-12">
-          <Reveal as="figure" className="md:col-span-5">
-            <Parallax
-              className="aspect-[4/5] overflow-hidden rounded-[1.25rem]"
-              amount={6}
-            >
-              <Image
-                src={profile.portrait.src}
-                alt={profile.portrait.alt}
-                width={profile.portrait.width}
-                height={profile.portrait.height}
-                sizes="(min-width: 768px) 40vw, 100vw"
-                className="size-full object-cover"
-              />
-            </Parallax>
-            <figcaption className="mt-4 flex justify-between gap-4 eyebrow text-muted">
-              <span>{profile.name}</span>
-              <span>{profile.location}</span>
-            </figcaption>
+        <div className="mt-14 md:mt-24">
+          <AboutPortrait />
+        </div>
+
+        <div className="mt-14 grid gap-x-8 gap-y-12 md:mt-24 md:grid-cols-12">
+          <Reveal className="md:sticky md:top-28 md:col-span-5 md:self-start">
+            <p className="max-w-[30ch] text-lead">{profile.introDetail}</p>
           </Reveal>
 
-          <div className="md:col-span-6 md:col-start-7">
-            <Reveal>
-              <p className="text-lead">{profile.introDetail}</p>
-            </Reveal>
-
-            <RevealGroup
-              className="mt-10 flex flex-col gap-6 text-body text-muted"
-              gap={0.1}
-            >
-              {profile.about.map((paragraph) => (
-                <RevealItem as="p" key={paragraph}>
-                  {paragraph}
-                </RevealItem>
-              ))}
-            </RevealGroup>
-
-            <Reveal className="mt-10">
-              <ArrowLink href="/resume">Read the full resume</ArrowLink>
-            </Reveal>
-          </div>
+          <RevealGroup
+            as="dl"
+            className="border-b border-line md:col-span-7 md:col-start-6"
+            gap={0.1}
+          >
+            {profile.about.map((item) => (
+              <RevealItem
+                key={item.label}
+                className="grid gap-x-8 gap-y-3 border-t border-line py-7 text-body md:grid-cols-[9rem_1fr] md:py-9"
+              >
+                <dt>({item.label})</dt>
+                <dd className="text-muted">{item.text}</dd>
+              </RevealItem>
+            ))}
+          </RevealGroup>
         </div>
       </div>
     </section>

@@ -20,19 +20,47 @@ export const profile = {
   introDetail:
     "Building PHP-based websites and React interfaces is my main weapon. Understanding what users want through requirements elicitation, documenting their needs, planning, designing software system requirements, and meeting their expectations is all in a day's work.",
 
-  /** Longer About copy, one string per paragraph. */
+  /**
+   * Longer About copy. Each paragraph has a short label that is shown next to
+   * it in brackets, e.g. "(Now)".
+   */
   about: [
-    "I'm currently working in Shibuya, Tokyo, which is known as the Silicon Valley of Japan.",
-    "I hold a B.Cs. in Software Engineering from the University Technology of Malaysia. I previously worked remotely from Indonesia for a company in Latvia as an e-commerce web developer. My tasks were mostly about integrating third-party apps, slicing interfaces, and improving website performance. So dealing with APIs for integration, front-end tasks, and paying attention to the details are my daily activities.",
-    "Outside of coding, I was actively involved in the community during my undergraduate studies, which made me realize how important broad and diverse connections abroad are as an asset for the future. I also play badminton two to three times a week to stay healthy, and surprisingly managed to secure a runner-up position in one of my university's competitions.",
-    "Craving something new and achieving more than expected are my big punches. That is what I am always trying to be. As evidence, although maintaining a GPA above 3.5 was hard, I still made the dean's list every semester while being involved in a non-profit organization. On top of that, I secured an award from the faculty as their best international student of 2022. That was a remarkable journey for me.",
+    {
+      label: "Now",
+      text: "I'm currently working in Shibuya, Tokyo, which is known as the Silicon Valley of Japan.",
+    },
+    {
+      label: "Before",
+      text: "I hold a B.Cs. in Software Engineering from the University Technology of Malaysia. I previously worked remotely from Indonesia for a company in Latvia as an e-commerce web developer. My tasks were mostly about integrating third-party apps, slicing interfaces, and improving website performance. So dealing with APIs for integration, front-end tasks, and paying attention to the details are my daily activities.",
+    },
+    {
+      label: "Off screen",
+      text: "Outside of coding, I was actively involved in the community during my undergraduate studies, which made me realize how important broad and diverse connections abroad are as an asset for the future. I also play badminton two to three times a week to stay healthy, and surprisingly managed to secure a runner-up position in one of my university's competitions.",
+    },
+    {
+      label: "Drive",
+      text: "Craving something new and achieving more than expected are my big punches. That is what I am always trying to be. As evidence, although maintaining a GPA above 3.5 was hard, I still made the dean's list every semester while being involved in a non-profit organization. On top of that, I secured an award from the faculty as their best international student of 2022. That was a remarkable journey for me.",
+    },
   ],
 
+  /** The large photo in the About section, and the short text laid over it. */
   portrait: {
     src: "/images/profile/rons.webp",
     alt: "Baron Gobi standing in an event hall, wearing a maroon sweater",
-    width: 1600,
-    height: 1600,
+    width: 2400,
+    height: 2400,
+    /**
+     * The point of the photo that must stay in view when it is cropped:
+     * [x, y], each from 0 (left / top) to 1 (right / bottom). Aim at the face.
+     */
+    focus: [0.52, 0.2],
+    /** The big word across the bottom of the photo. */
+    wordmark: "Baron",
+    /** One sentence in the top corner; `trail` is the dimmed ending. */
+    lead: "Full-Stack Web Developer and certified Magento 2 professional,",
+    trail: "based in Tokyo, Japan.",
+    /** Short list beside the photo, numbered "01/". Keep to three or four. */
+    focusAreas: ["Back end", "Front end", "Performance"],
   },
 
   resume: {
