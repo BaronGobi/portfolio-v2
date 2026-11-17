@@ -5,12 +5,17 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { MotionValue } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { createSceneInput, type SceneInputHandle } from "./sceneInput";
 
 /**
  * The 3D hero: a glowing orange core inside three glass gimbal rings, with a
  * few glass shapes in orbit.
  *
- * - It leans toward the cursor.
+ * - It turns to face the mouse or finger on springs, the rings swinging a
+ *   little behind. Nearby orbiting pieces are drawn toward the pointer, and
+ *   the core glows brighter as it gets close.
+ * - A flick or swipe spins it; a tap or click sends a pulse through it.
+ * - On phones, tilting the device turns it too (see `tilt.ts`).
  * - As the page scrolls (`progress` goes 0 to 1) the pieces drift apart.
  * - This file is loaded lazily, in the browser only, after the page is usable
  *   (see `Hero.tsx`), because three.js is by far the heaviest dependency.
@@ -146,7 +151,9 @@ const coreVertexShader = /* glsl */ `
 `;
 
 // Deep orange in the middle, a lighter rim where the surface turns away.
+// `uGlow` (0 and up) heats it toward the lighter colour and brightens it.
 const coreFragmentShader = /* glsl */ `
+  uniform float uGlow;
   varying vec3 vNormal;
   varying vec3 vView;
 
@@ -154,7 +161,9 @@ const coreFragmentShader = /* glsl */ `
     float rim = pow(1.0 - max(dot(normalize(vNormal), normalize(vView)), 0.0), 2.0);
     vec3 deep = vec3(1.0, 0.3, 0.06);
     vec3 hot = vec3(1.0, 0.74, 0.52);
-    gl_FragColor = vec4(mix(deep, hot, rim), 1.0);
+    vec3 color = mix(deep, hot, rim);
+    color = mix(color, hot, min(uGlow, 1.0) * 0.45) * (1.0 + uGlow * 0.35);
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -172,6 +181,11 @@ export type HeroSceneProps = {
    * and less geometry. The scene looks the same at that size.
    */
   lite?: boolean;
+  /**
+   * Turn with the phone's tilt. Pass `true` only once the browser allows it
+   * (on iPhones, after the visitor has accepted the permission prompt).
+   */
+  tilt?: boolean;
 };
 
 export default function HeroScene({
@@ -180,6 +194,7 @@ export default function HeroScene({
   onReady,
   onGiveUp,
   lite = false,
+  tilt = false,
 }: HeroSceneProps) {
   const [maxDpr, setMaxDpr] = useState(lite ? 1.25 : 1.5);
   const slowSamples = useRef(0);
@@ -196,14 +211,20 @@ export default function HeroScene({
   return (
     <Canvas
       dpr={[1, maxDpr]}
-      camera={{ position: [0, 0, 9], fov: 35, near: 0.1, far: 60 }}
+      camera={{ position: [0, 0, CAMERA_Z], fov: 35, near: 0.1, far: 60 }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       frameloop={active ? "always" : "never"}
     >
       <color attach="background" args={[BACKGROUND]} />
       <FrameRateGuard active={active} onSlow={handleSlow} />
       <StudioLights />
-      <Cluster progress={progress} onReady={onReady} lite={lite} />
+      <Cluster
+        progress={progress}
+        onReady={onReady}
+        active={active}
+        lite={lite}
+        tilt={tilt}
+      />
     </Canvas>
   );
 }
@@ -318,19 +339,121 @@ function StudioLights() {
   );
 }
 
-type ClusterProps = Pick<HeroSceneProps, "progress" | "onReady"> & { lite: boolean };
+/** A value that is pulled toward a target and can overshoot it. */
+type Spring = { value: number; velocity: number };
 
-function Cluster({ progress, onReady, lite }: ClusterProps) {
+const spring = (): Spring => ({ value: 0, velocity: 0 });
+
+/**
+ * Moves a spring toward `target`. Low damping makes it overshoot and swing
+ * back. It is stepped in small slices, so it feels the same at any frame rate.
+ */
+function stepSpring(
+  state: Spring,
+  target: number,
+  [stiffness, damping]: readonly [number, number],
+  delta: number,
+) {
+  const steps = Math.ceil(delta * 120);
+  const dt = delta / steps;
+  for (let i = 0; i < steps; i += 1) {
+    state.velocity +=
+      (stiffness * (target - state.value) - damping * state.velocity) * dt;
+    state.value += state.velocity * dt;
+  }
+}
+
+function limit(value: number, max: number) {
+  return Math.min(Math.max(value, -max), max);
+}
+
+/** How far the cluster turns to face the pointer, in radians. */
+const TURN_SIDEWAYS = 0.75;
+const TURN_UP_DOWN = 0.55;
+/** [stiffness, damping] of that turn: quick, with a small overshoot. */
+const TURN_SPRING = [70, 11] as const;
+/** The rings follow on looser springs, inner to outer, so they lag and swing. */
+const RING_SPRINGS = [
+  [48, 7],
+  [34, 5.2],
+  [24, 4],
+] as const;
+/** Spin gained from a flick one screen height long, in radians per second. */
+const FLICK_SPIN = 6;
+const MAX_SPIN = 8;
+/** Which way, and how much, each ring tumbles from a sideways flick. */
+const RING_FLICK = [1, -0.8, 0.6];
+/** Springs that let the cluster wobble after an up or down flick, and after a tap. */
+const WOBBLE_SPRING = [30, 4.5] as const;
+const PULSE_SPRING = [60, 7] as const;
+const PULSE_KICK = 9;
+/** Share of the distance to the pointer that a nearby orbiting piece moves. */
+const PULL = 0.55;
+/** How far that pull reaches, in the cluster's own units. */
+const PULL_RADIUS = 1.5;
+/** Distance from the camera to the cluster's plane. */
+const CAMERA_Z = 9;
+
+type Motion = {
+  /** Where the cluster looks, in canvas pixels; eased toward the pointer. */
+  aimX: number;
+  aimY: number;
+  /** 0 to 1: a real pointer or finger (rather than tilt or idle drift) is driving it. */
+  live: number;
+  /** 0 to 1: tilt is driving it. */
+  tilting: number;
+  turnX: Spring;
+  turnY: Spring;
+  rings: Array<{ turnX: Spring; turnY: Spring; spin: number; spinVelocity: number }>;
+  spin: number;
+  spinVelocity: number;
+  wobble: Spring;
+  pulse: Spring;
+  glow: number;
+};
+
+function createMotion(): Motion {
+  return {
+    aimX: Number.NaN,
+    aimY: Number.NaN,
+    live: 0,
+    tilting: 0,
+    turnX: spring(),
+    turnY: spring(),
+    rings: RINGS.map(() => ({
+      turnX: spring(),
+      turnY: spring(),
+      spin: 0,
+      spinVelocity: 0,
+    })),
+    spin: 0,
+    spinVelocity: 0,
+    wobble: spring(),
+    pulse: spring(),
+    glow: 0,
+  };
+}
+
+type ClusterProps = Pick<HeroSceneProps, "progress" | "onReady" | "active"> & {
+  lite: boolean;
+  tilt: boolean;
+};
+
+function Cluster({ progress, onReady, active, lite, tilt }: ClusterProps) {
   const cluster = useRef<THREE.Group>(null);
   const core = useRef<THREE.Mesh>(null);
+  const halo = useRef<THREE.Sprite>(null);
   const dust = useRef<THREE.Points>(null);
+  const ringPivots = useRef<Array<THREE.Group | null>>([]);
   const ringMeshes = useRef<Array<THREE.Mesh | null>>([]);
   const satelliteMeshes = useRef<Array<THREE.Mesh | null>>([]);
 
   const time = useRef(0);
   const intro = useRef(0);
   const announced = useRef(false);
-  const pointer = useRef({ x: 0, y: 0 });
+  const input = useRef<SceneInputHandle | null>(null);
+  const motion = useRef<Motion | null>(null);
+  const scratch = useRef<THREE.Vector3 | null>(null);
 
   const viewport = useThree((state) => state.viewport);
   const portrait = viewport.aspect < 0.9;
@@ -366,6 +489,7 @@ function Cluster({ progress, onReady, lite }: ClusterProps) {
       new THREE.ShaderMaterial({
         vertexShader: coreVertexShader,
         fragmentShader: coreFragmentShader,
+        uniforms: { uGlow: { value: 0 } },
         toneMapped: false,
       }),
     [],
@@ -386,22 +510,32 @@ function Cluster({ progress, onReady, lite }: ClusterProps) {
     };
   }, [glass, coreMaterial, haloTexture]);
 
-  // The canvas sits under the page text, so it never receives pointer events
-  // itself. Listen on the window instead.
+  // The canvas sits under the page text, so it never receives events itself;
+  // the input listens on the window (see `sceneInput.ts`).
   useEffect(() => {
-    const onMove = (event: PointerEvent) => {
-      pointer.current.x = (event.clientX / window.innerWidth) * 2 - 1;
-      pointer.current.y = (event.clientY / window.innerHeight) * 2 - 1;
+    const handle = createSceneInput();
+    input.current = handle;
+    return () => {
+      handle.destroy();
+      input.current = null;
     };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
   }, []);
 
-  useFrame((_, rawDelta) => {
+  // The motion sensor runs only while the scene is on screen.
+  useEffect(() => {
+    input.current?.listenToTilt(tilt && active);
+  }, [tilt, active]);
+
+  useFrame((state, rawDelta) => {
     const group = cluster.current;
     if (!group) return;
 
-    // Clamp so the scene doesn't jump after the tab or the loop was paused.
+    const handle = input.current;
+    const io = handle ? handle.state : null;
+    const impulses = handle?.take();
+    // After a pause (scene off screen, tab in the background), forget flicks
+    // and taps that happened meanwhile, and don't let the scene jump.
+    const fresh = rawDelta <= 0.25;
     const delta = Math.min(rawDelta, 0.1);
     time.current += delta;
     const t = time.current;
@@ -409,44 +543,169 @@ function Cluster({ progress, onReady, lite }: ClusterProps) {
     intro.current = Math.min(1, intro.current + delta / 1.9);
     const grow = 1 - Math.pow(1 - intro.current, 4);
     const scroll = progress.get();
+    const m = (motion.current ??= createMotion());
+    const point = (scratch.current ??= new THREE.Vector3());
 
-    // Ease the whole cluster toward the cursor, and turn it as the page scrolls.
-    const ease = 1 - Math.exp(-delta * 3);
-    const targetX = pointer.current.y * 0.2 + scroll * 0.55;
-    const targetY = pointer.current.x * 0.3 + scroll * 1.15;
-    group.rotation.x += (targetX - group.rotation.x) * ease;
-    group.rotation.y += (targetY - group.rotation.y) * ease;
-    group.position.set(
-      baseX,
-      baseY + scroll * viewport.height * 0.2 + Math.sin(t * 0.55) * 0.06,
-      0,
-    );
-    group.scale.setScalar(baseScale * (0.3 + 0.7 * grow) * (1 + scroll * 0.25));
+    // Where the cluster is on screen, in canvas pixels.
+    const { size } = state;
+    const unit = size.height / viewport.height;
+    const scale = baseScale * (0.3 + 0.7 * grow) * (1 + scroll * 0.25);
+    const worldY = baseY + scroll * viewport.height * 0.2 + Math.sin(t * 0.55) * 0.06;
+    const centerX = size.width / 2 + baseX * unit;
+    const centerY = size.height / 2 - worldY * unit;
+    const radius = RINGS[RINGS.length - 1].radius * scale * unit;
+    // Pointer distance at which the turn is about three quarters of its maximum.
+    const reach = Math.max(radius * 1.5, size.height * 0.3);
 
-    ringMeshes.current.forEach((mesh, index) => {
-      if (!mesh) return;
-      const ring = RINGS[index];
-      mesh.rotation.x = t * ring.speed + (1 - grow) * 2.4;
-      mesh.rotation.y = t * ring.speed * 0.6;
-      mesh.scale.setScalar(1 + scroll * ring.spread);
+    // What it looks at: the pointer or finger; else a point set by the tilt
+    // of the phone; else a slow drift around its centre.
+    let aimX = centerX + Math.sin(t * 0.37) * reach * 0.25;
+    let aimY = centerY + Math.sin(t * 0.29 + 1) * reach * 0.15;
+    let rate = 2;
+    let live = 0;
+    let tilting = 0;
+    if (io?.present) {
+      aimX = io.x - size.left;
+      aimY = io.y - size.top;
+      rate = 14;
+      live = 1;
+    } else if (io?.tilt) {
+      aimX = centerX + io.tilt.x * reach;
+      aimY = centerY + io.tilt.y * reach;
+      rate = 6;
+      tilting = 1;
+    }
+    const follow = 1 - Math.exp(-delta * rate);
+    m.aimX = Number.isNaN(m.aimX) ? aimX : m.aimX + (aimX - m.aimX) * follow;
+    m.aimY = Number.isNaN(m.aimY) ? aimY : m.aimY + (aimY - m.aimY) * follow;
+    m.live += (live - m.live) * (1 - Math.exp(-delta * 4));
+    m.tilting += (tilting - m.tilting) * (1 - Math.exp(-delta * 3));
+
+    // Turn to face it. The rings follow more loosely.
+    const faceY = TURN_SIDEWAYS * Math.tanh((m.aimX - centerX) / reach);
+    const faceX = TURN_UP_DOWN * Math.tanh((m.aimY - centerY) / reach);
+    stepSpring(m.turnX, faceX, TURN_SPRING, delta);
+    stepSpring(m.turnY, faceY, TURN_SPRING, delta);
+    m.rings.forEach((ring, index) => {
+      stepSpring(ring.turnX, faceX, RING_SPRINGS[index], delta);
+      stepSpring(ring.turnY, faceY, RING_SPRINGS[index], delta);
     });
 
+    // A flick or swipe spins it; a tap or click sends a pulse through it.
+    // With a mouse, only flicks across the cluster count, not every quick
+    // move toward the menu.
+    if (io && impulses && fresh) {
+      const distance = Math.hypot(io.x - size.left - centerX, io.y - size.top - centerY);
+      const near = io.touch ? 1 : Math.exp(-((distance / (radius * 1.8)) ** 2));
+      const flickX = (impulses.flickX / size.height) * near;
+      const flickY = (impulses.flickY / size.height) * near;
+
+      m.spinVelocity = limit(m.spinVelocity + flickX * FLICK_SPIN, MAX_SPIN);
+      m.wobble.velocity += flickY * FLICK_SPIN * 0.7;
+      m.rings.forEach((ring, index) => {
+        ring.spinVelocity = limit(
+          ring.spinVelocity + (flickX * RING_FLICK[index] + flickY * 0.5) * FLICK_SPIN,
+          MAX_SPIN,
+        );
+      });
+
+      if (impulses.pulses > 0) {
+        m.pulse.velocity += PULSE_KICK * Math.min(impulses.pulses, 2);
+        m.rings.forEach((ring, index) => {
+          ring.spinVelocity = limit(
+            ring.spinVelocity + RING_FLICK[index] * 2.5,
+            MAX_SPIN,
+          );
+        });
+      }
+    }
+    m.spinVelocity *= Math.exp(-delta * 1.1);
+    m.spin += m.spinVelocity * delta;
+    m.rings.forEach((ring) => {
+      ring.spinVelocity *= Math.exp(-delta * 1.5);
+      ring.spin += ring.spinVelocity * delta;
+    });
+    stepSpring(m.wobble, 0, WOBBLE_SPRING, delta);
+    stepSpring(m.pulse, 0, PULSE_SPRING, delta);
+    const pulse = m.pulse.value;
+
+    // The core glows brighter as the pointer gets close.
+    const aimDistance = Math.hypot(m.aimX - centerX, m.aimY - centerY);
+    const glowTarget = m.live * Math.exp(-((aimDistance / (radius * 0.8)) ** 2));
+    m.glow += (glowTarget - m.glow) * (1 - Math.exp(-delta * 5));
+    const glow = m.glow + Math.max(pulse, 0) * 0.9;
+
+    // Scrolling still turns the cluster and pulls it apart, as before.
+    group.rotation.x = m.turnX.value + m.wobble.value + scroll * 0.55;
+    group.rotation.y = m.turnY.value + m.spin + scroll * 1.15;
+    group.position.set(baseX, worldY, 0);
+    group.scale.setScalar(scale);
+
+    ringMeshes.current.forEach((mesh, index) => {
+      const pivot = ringPivots.current[index];
+      if (!mesh || !pivot) return;
+      const ring = RINGS[index];
+      const motionOfRing = m.rings[index];
+      // Only the difference: the cluster's own turn already applies.
+      pivot.rotation.set(
+        motionOfRing.turnX.value - m.turnX.value,
+        motionOfRing.turnY.value - m.turnY.value,
+        0,
+      );
+      mesh.rotation.x = t * ring.speed + (1 - grow) * 2.4 + motionOfRing.spin;
+      mesh.rotation.y = t * ring.speed * 0.6;
+      mesh.scale.setScalar(
+        (1 + scroll * ring.spread) * (1 + pulse * 0.14 * (1 + index * 0.4)),
+      );
+    });
+
+    group.updateMatrixWorld();
+
+    // Orbiting pieces near the pointer are drawn toward it. The pull is
+    // worked out on screen, at each piece's own depth.
+    const pull = Math.max(m.live, m.tilting) * PULL;
+    const pullRadius = PULL_RADIUS * scale;
     satelliteMeshes.current.forEach((mesh, index) => {
-      if (!mesh) return;
+      const parent = mesh?.parent;
+      if (!mesh || !parent) return;
       const satellite = SATELLITES[index];
       const angle = satellite.phase + t * satellite.speed;
-      const orbit = satellite.orbit * (0.55 + 0.45 * grow) * (1 + scroll * 1.5);
-      mesh.position.set(Math.cos(angle) * orbit, 0, Math.sin(angle) * orbit);
+      const orbit =
+        satellite.orbit *
+        (0.55 + 0.45 * grow) *
+        (1 + scroll * 1.5) *
+        (1 + Math.max(pulse, -0.5) * 0.35);
+      point.set(Math.cos(angle) * orbit, 0, Math.sin(angle) * orbit);
+
+      if (pull > 0.001) {
+        parent.localToWorld(point);
+        const depth = (CAMERA_Z - point.z) / CAMERA_Z;
+        const dx = ((m.aimX - size.width / 2) / unit) * depth - point.x;
+        const dy = (-(m.aimY - size.height / 2) / unit) * depth - point.y;
+        const strength =
+          pull * Math.exp(-(dx * dx + dy * dy) / (pullRadius * pullRadius));
+        point.x += dx * strength;
+        point.y += dy * strength;
+        parent.worldToLocal(point);
+      }
+
+      mesh.position.copy(point);
       mesh.rotation.x += delta * 0.5;
       mesh.rotation.y += delta * 0.35;
     });
 
     if (core.current) {
-      core.current.scale.setScalar(1 + Math.sin(t * 1.3) * 0.025);
+      core.current.scale.setScalar(1 + Math.sin(t * 1.3) * 0.025 + pulse * 0.12);
+      (core.current.material as THREE.ShaderMaterial).uniforms.uGlow.value = glow;
+    }
+    if (halo.current) {
+      halo.current.scale.set(6.4 * (1 + glow * 0.25), 6.4 * (1 + glow * 0.25), 1);
+      halo.current.material.color.setScalar(1 + glow * 0.8);
     }
 
     if (dust.current) {
-      dust.current.rotation.y = t * 0.02 + scroll * 0.5;
+      // The dust turns less than the cluster when it spins, which adds depth.
+      dust.current.rotation.y = t * 0.02 + scroll * 0.5 - m.spin * 0.6;
     }
 
     if (!announced.current) {
@@ -461,7 +720,7 @@ function Cluster({ progress, onReady, lite }: ClusterProps) {
       <mesh ref={core} material={coreMaterial}>
         <sphereGeometry args={[0.56, sphereDetail, sphereDetail]} />
       </mesh>
-      <sprite scale={[6.4, 6.4, 1]}>
+      <sprite ref={halo} scale={[6.4, 6.4, 1]}>
         <spriteMaterial
           map={haloTexture}
           blending={THREE.AdditiveBlending}
@@ -471,17 +730,24 @@ function Cluster({ progress, onReady, lite }: ClusterProps) {
         />
       </sprite>
 
-      {/* Gimbal rings. */}
+      {/* Gimbal rings. The outer group lets each ring lag behind the turn. */}
       {RINGS.map((ring, index) => (
-        <group key={index} rotation={ring.tilt}>
-          <mesh
-            ref={(mesh) => {
-              ringMeshes.current[index] = mesh;
-            }}
-            material={glass}
-          >
-            <torusGeometry args={[ring.radius, ring.tube, ...ringDetail]} />
-          </mesh>
+        <group
+          key={index}
+          ref={(pivot) => {
+            ringPivots.current[index] = pivot;
+          }}
+        >
+          <group rotation={ring.tilt}>
+            <mesh
+              ref={(mesh) => {
+                ringMeshes.current[index] = mesh;
+              }}
+              material={glass}
+            >
+              <torusGeometry args={[ring.radius, ring.tube, ...ringDetail]} />
+            </mesh>
+          </group>
         </group>
       ))}
 
