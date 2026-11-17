@@ -10,7 +10,7 @@ A dark, editorial site with a 3D hero, scroll-driven motion, case-study pages an
 
 ## Features
 
-- **3D hero** built with three.js: an orange core in glass gimbal rings that leans toward the cursor and drifts apart as you scroll. It loads after the page is usable and falls back to a CSS drawing on slow devices.
+- **Interactive 3D hero** built with three.js: an orange core in glass gimbal rings that turns to face the cursor or finger, spins when flicked, pulses when tapped, follows the phone's tilt, and drifts apart as you scroll. It loads after the page is usable and falls back to a CSS drawing on slow devices.
 - **Liquid portrait** in the About section: a full-size photo under an oversized wordmark that smears like a liquid behind the cursor, or under a finger on phones. Written in plain WebGL, with no extra library.
 - **Scroll-driven motion** with Framer Motion: masked text reveals, a quote that lights up word by word, counters, parallax, a velocity-aware ticker and a cursor-following project preview.
 - **Dark and light themes** that follow the system setting, with a toggle that remembers the choice and no flash on load.

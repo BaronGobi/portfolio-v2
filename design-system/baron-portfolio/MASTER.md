@@ -147,7 +147,11 @@ Rules:
 
 An original scene: an orange core inside three glass gimbal rings, with small glass shapes in orbit.
 
-- Leans toward the cursor; drifts apart as the page scrolls.
+- Turns to face the cursor or finger on springs, the rings swinging slightly behind; nearby orbiting pieces are drawn toward the pointer and the core glows as it gets close.
+- A flick or sideways swipe spins it; a tap or click sends a pulse through it.
+- Follows the phone's tilt. iPhones show a "Turn on tilt" button above the hero text (not on screens under 620 px tall, where it does not fit).
+- Never blocks scrolling: all listeners are passive.
+- Drifts apart as the page scrolls.
 - Loaded lazily in the browser, once the page has loaded and is idle. The server sends a CSS drawing of the same artwork, which shows first and stays as the fallback.
 - Phone-sized screens get a lighter version: lower pixel density, no rainbow fringe on the glass, less geometry.
 - Skipped for: reduced motion, data-saver mode, devices reporting very little memory, missing or software-rendered WebGL 2.

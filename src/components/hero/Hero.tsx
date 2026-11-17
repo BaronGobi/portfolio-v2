@@ -10,13 +10,14 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { ArrowDown, ArrowUpRight } from "lucide-react";
+import { ArrowDown, ArrowUpRight, Rotate3d } from "lucide-react";
 import { SectionLink } from "@/components/ui/SectionLink";
 import { profile } from "@/content/profile";
 import { useMediaQuery, usePrefersReducedMotion } from "@/lib/hooks";
 import { duration } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { HeroFallback } from "./HeroFallback";
+import { useTilt } from "./tilt";
 
 // three.js is large, so the scene is its own chunk, fetched only in the
 // browser and only after this component has hydrated.
@@ -163,6 +164,12 @@ export function Hero() {
   const show3D = pageIdle && !reduced && !sceneTooSlow && canRender3D();
   const sceneVisible = show3D && sceneReady;
 
+  // Phones can turn the scene by tilting. Android allows it straight away;
+  // iPhones need a tap on "Turn on tilt" and the system prompt that follows.
+  const hoverless = useMediaQuery("(hover: none)");
+  const tilt = useTilt(hoverless && show3D);
+  const offerTilt = sceneVisible && tilt.offer;
+
   return (
     <>
       {/* Scroll track. It also carries the page's real <h1> and tells the
@@ -178,6 +185,8 @@ export function Hero() {
         // Once the page has scrolled over the hero, take it out of the tab
         // order and stop painting it.
         inert={covered}
+        // Taps and touches here play with the 3D scene (see `sceneInput.ts`).
+        data-hero-area=""
         className={cn(
           "band tone-dark print-hidden fixed inset-0 z-0 h-svh overflow-hidden",
           covered && "invisible",
@@ -196,6 +205,7 @@ export function Hero() {
                 <HeroScene
                   progress={scrollYProgress}
                   lite={smallScreen}
+                  tilt={tilt.on}
                   active={!covered}
                   onReady={() => setSceneReady(true)}
                   onGiveUp={() => setSceneTooSlow(true)}
@@ -217,6 +227,23 @@ export function Hero() {
         >
           {/* Text sits on the left; the right side is left clear for the 3D scene. */}
           <div className="max-w-xl">
+            {/* The column is anchored to the bottom, so this grows upward and
+                moves nothing below it. On short screens (small phones, and
+                any phone held sideways) there is no room for it above the
+                text, so it is left out there. */}
+            {offerTilt && (
+              <m.button
+                type="button"
+                onClick={tilt.turnOn}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: duration.base, ease: "easeOut" }}
+                className="mb-6 inline-flex min-h-11 items-center gap-2.5 rounded-full border border-line bg-white/5 px-4 text-sm font-medium backdrop-blur-sm transition-colors duration-300 hover:bg-white hover:text-black [@media(max-height:619px)]:hidden"
+              >
+                <Rotate3d aria-hidden="true" className="size-4" />
+                Turn on tilt
+              </m.button>
+            )}
             <p
               className="flex hero-fade flex-wrap items-center gap-x-3 gap-y-1 eyebrow text-muted"
               style={delay(450)}

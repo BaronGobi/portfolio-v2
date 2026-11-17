@@ -77,6 +77,16 @@ Every full-width section also carries `data-band`. The header and the back-to-to
 
 The live scene is skipped for reduced motion, data-saver mode, devices that report 2 GB of memory or less, and when WebGL 2 is missing or software-rendered. Phone-sized screens get a lighter version (`lite`: lower pixel density, no dispersion, less geometry). A frame-rate guard inside the scene lowers the pixel density if it runs below 24 fps, then hands back to the fallback if that is not enough. Add `?3d=force` to the URL to bypass the device checks while debugging.
 
+#### Interaction
+
+The canvas sits under the hero text, so it never receives events itself. `sceneInput.ts` listens on the window instead, with passive listeners only, so scrolling is never blocked. Each frame the scene reads the latest position and takes the flicks and taps gathered since the frame before.
+
+- What it looks at: the mouse or finger when there is one; else a point set by the phone's tilt; else a slow drift around its centre. It turns toward that point on springs (`TURN_SPRING`), with the rings on looser springs so they lag and swing.
+- Mouse and pen use pointer events. Fingers use touch events, because browsers cancel pointer events once a touch starts scrolling the page. Taps and touches count only inside the hero (`data-hero-area`), so the menu and the rest of the page are unaffected.
+- Flicks: only fast movement spins the scene. With a mouse it must also cross the cluster, so a quick move toward the menu does nothing.
+- Tilt: measured against a resting position that slowly follows the way the phone is held, so any grip counts as level. `tilt.ts` decides whether it may be used. Android reports orientation without asking. iPhones need a tap on "Turn on tilt" and the system prompt. Newer Chrome also has iPhone-style `requestPermission()` but keeps reporting without it, so the button only appears when no readings arrive. The button is left out on screens under 620 px tall, where it would run into the header. The sensor is switched off while the hero is out of view.
+- Most of the feel is set by the constants at the top of the `Cluster` section of `HeroScene.tsx` (`TURN_SIDEWAYS`, `FLICK_SPIN`, `PULL` and so on).
+
 ### The liquid portrait
 
 `AboutPortrait.tsx` is the photo panel in the About section. The photo itself is `LiquidImage` (`src/components/motion`): an ordinary `next/image`, with a WebGL canvas on top that is only visible while the surface is moving.
